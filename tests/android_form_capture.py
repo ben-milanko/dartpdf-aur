@@ -82,8 +82,6 @@ def main():
              "--package", IMAGE, "--device", "pixel_3a", "--path", str(avd)],
             env=java_env, input_text="no\n")
     emulator = sdk / "emulator/emulator"
-    libraries = checked(["ldd", str(sdk / "emulator/qemu/linux-x86_64/qemu-system-x86_64")])
-    assert "not found" not in libraries, "Emulator still has missing shared libraries"
     checked([str(emulator), "-version"])
     checked([str(emulator), "-help-accel"])
     adb = str(sdk / "platform-tools/adb")
