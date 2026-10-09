@@ -60,8 +60,8 @@ def main():
     print("Host UID:", os.geteuid())
     print("Host disk available bytes:", os.statvfs(temp).f_bavail * os.statvfs(temp).f_frsize)
     assert os.statvfs(temp).f_bavail * os.statvfs(temp).f_frsize > 8 * 1024**3
-    assert os.access("/dev/kvm", os.R_OK | os.W_OK), "Existing runner KVM access unavailable"
-    print("KVM access already available; no permission change")
+    print("Existing KVM read/write access:", os.access("/dev/kvm", os.R_OK | os.W_OK))
+    print("Explicit software emulation; unsupported/slow SDK mode, no KVM permission change")
     build = sdk / "build-tools/35.0.0"
     badging = checked([str(build / "aapt"), "dump", "badging", str(apk)])
     assert "name='dev.milanko.dartpdf' versionCode='44' versionName='8.0.0'" in badging
@@ -83,7 +83,7 @@ def main():
             env=java_env, input_text="no\n")
     emulator = sdk / "emulator/emulator"
     checked([str(emulator), "-version"])
-    checked([str(emulator), "-accel-check"])
+    checked([str(emulator), "-help-accel"])
     adb = str(sdk / "platform-tools/adb")
 
     def device(*arguments, timeout=60):
@@ -94,23 +94,24 @@ def main():
     with log_path.open("w") as log:
         process = subprocess.Popen([
             str(emulator), "@" + NAME, "-port", "5554", "-no-window",
-            "-no-snapshot", "-no-audio", "-no-boot-anim", "-accel", "on",
-            "-gpu", "swiftshader_indirect", "-memory", "2048", "-cores", "2",
-        ], stdout=log, stderr=subprocess.STDOUT)
+            "-no-snapshot", "-no-audio", "-no-boot-anim", "-accel", "off",
+            "-gpu", "swiftshader_indirect", "-memory", "2048", "-cores", "1",
+        ], stdout=log, stderr=subprocess.STDOUT,
+            env={**os.environ, "ANDROID_I_WANT_MY_TCG": "yes"})
         try:
             checked([adb, "start-server"])
-            deadline = time.monotonic() + 300
+            deadline = time.monotonic() + 600
             while time.monotonic() < deadline:
                 assert process.poll() is None, "Owned emulator exited before boot"
                 readback = subprocess.run(
                     [adb, "-s", SERIAL, "shell", "getprop", "sys.boot_completed"],
-                    text=True, capture_output=True, timeout=15,
+                    text=True, capture_output=True, timeout=30,
                 )
                 if readback.returncode == 0 and readback.stdout.strip() == "1":
                     booted = True
                     break
                 time.sleep(5)
-            assert booted, "No completed boot within five minutes"
+            assert booted, "No completed software-emulation boot within ten minutes"
             print("Actual boot completed; stock SDK-created data, no -initdata argument")
             device("shell", "getprop", "ro.build.version.sdk")
             device("shell", "getprop", "ro.product.cpu.abi")
@@ -144,7 +145,8 @@ def main():
             screenshot = subprocess.run([adb, "-s", SERIAL, "exec-out", "screencap", "-p"],
                                         capture_output=True, timeout=30, check=True).stdout
             emit_png(screenshot, "android8-de-form-raw.png",
-                     "Actual signed APK8.0.0+44 on isolated Android35; requested per-app German locale. "
+                     "Actual signed APK8.0.0+44 on isolated Android35 using unsupported software emulation; "
+                     "requested per-app German locale. No performance/hardware-acceleration claim. "
                      "Focused app and native pixels require visual document/language review. "
                      "Prefilled fictional form; no save/edit/signature or Play-signed compatibility proof.")
             device("logcat", "-d", "--pid=" + pid, "*:W", timeout=30)
