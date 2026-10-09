@@ -22,7 +22,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y snapd dbus-user-session xvfb xauth x11-utils \
             python3-yaml at-spi2-core ibus python3-gi gir1.2-atspi-2.0 \
-            imagemagick xdotool
+            imagemagick xdotool locales
+          sudo localedef -i en_GB -f UTF-8 en_GB.UTF-8
           sudo systemctl start snapd.socket
           timeout 120 sudo snap wait system seed.loaded
           lsb_release -a
@@ -46,6 +47,8 @@ jobs:
             --working-directory="$GITHUB_WORKSPACE" \
             --setenv=XDG_RUNTIME_DIR="/run/user/$(id -u)" \
             --setenv=DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$(id -u)/bus" \
+            --setenv=LANG=en_GB.UTF-8 --setenv=LC_ALL=en_GB.UTF-8 \
+            --setenv=LANGUAGE=en_GB:en \
             /usr/bin/xvfb-run -a --server-args="-screen 0 1440x1100x24" \
             --auth-file="$HOME/snap/dartpdf/common/Xauthority" \
             /usr/bin/python3 "$GITHUB_WORKSPACE/tests/snap_form_capture.py"

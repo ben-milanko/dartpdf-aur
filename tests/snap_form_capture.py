@@ -26,6 +26,11 @@ FATAL = re.compile(
 def main():
     assert os.geteuid() != 0, "Normal-user capture must not run as root"
     print("Capture UID:", os.geteuid())
+    print("Requested desktop locale:", json.dumps({
+        name: os.environ.get(name) for name in ("LANG", "LC_ALL", "LANGUAGE")
+    }))
+    assert os.environ.get("LANGUAGE") == "en_GB:en", "English capture locale missing"
+    checked(["locale"])
     checked(["systemctl", "--user", "is-active", "dbus.socket"])
     checked(["busctl", "--user", "status", "org.freedesktop.systemd1"])
     checked(["busctl", "--user", "call", "org.a11y.Bus", "/org/a11y/bus",
