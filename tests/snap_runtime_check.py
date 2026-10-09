@@ -23,6 +23,8 @@ def main():
     assert os.geteuid() != 0, "Desktop-user test must not run as root"
     print("Desktop test UID:", os.geteuid())
     print("Desktop test cgroup:", Path("/proc/self/cgroup").read_text().strip())
+    checked(["systemctl", "--user", "is-active", "dbus.socket"])
+    checked(["busctl", "--user", "status", "org.freedesktop.systemd1"])
     fixture = Path.home() / "snap/dartpdf/common/public sample.pdf"
     assert hashlib.sha256(fixture.read_bytes()).hexdigest() == (
         "fcee6184c0d776126782cd2799797b106373278c8ea0a4354ee4e33cd8663d51"
