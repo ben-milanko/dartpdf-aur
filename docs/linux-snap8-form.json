@@ -1,0 +1,21 @@
+{
+  "application": "DartPDF PDF editor app",
+  "version": "8.0.0+44",
+  "distribution": "Unchanged signed Snap Store latest/stable amd64 revision 23",
+  "host": "Ubuntu 22.04, normal UID1001 desktop session, Xvfb",
+  "confinement": "snap.dartpdf.dartpdf (enforce)",
+  "language": "English; LC_ALL=en_GB.UTF-8 and LANGUAGE=en_GB:en. Actual LANG remained C.UTF-8.",
+  "image": "linux-snap8-form.png",
+  "width": 1440,
+  "height": 1100,
+  "bytes": 89496,
+  "sha256": "8225caa67660e56bd862417b25aad55afce6cbfd70de1315bfaf8daaa0e92568",
+  "source": "https://github.com/ben-milanko/dartpdf-aur/actions/runs/37947023604",
+  "capturedByWorkflowHead": "91cdddeb2ef7685bd366bf5334df3e6c1073e992",
+  "testFixture": "../tests/fixtures/equipment-loan-form.pdf",
+  "fixtureSha256": "48cd26eab84e705b01b3c7e1c4a86d763ec277809258885a4196ae3234efbf9d",
+  "method": "AI-assisted test preparation. Actual ImageMagick capture of the published Linux app window, resized normally; no app rebuild, simulated frame, marketing overlay or pixel retouching. PNG decoded from the ordinary job log and matched to its native checksum.",
+  "scope": "The screenshot shows the shipped app displaying an interactive fictional form. Fields were prefilled externally and the signature area is blank. It is not proof of filling, saving, signing, every feature or store acceptance.",
+  "privacy": "Only labeled fictional information and an example.com address; no personal documents.",
+  "warningLimits": "The minimal CI desktop emits nonfatal IBUS directory and missing secret-service warnings. This is not full desktop/keychain or visual feature certification."
+}

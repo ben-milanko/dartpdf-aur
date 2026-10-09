@@ -30,6 +30,20 @@ review of every editing feature, an AUR acceptance decision or evidence of
 new user installs. The source recipe comes from DartPDF's Apache-2.0
 repository and retains that license.
 
+## Published Snap capture
+
+[DartPDF is available in the Snap Store](https://snapcraft.io/dartpdf).
+Install the signed stable package with `sudo snap install dartpdf`.
+
+![DartPDF 8.0.0 displaying a fictional form on Linux](docs/linux-snap8-form.png)
+
+This is the published 8.0.0+44 Snap running as a normal user on Ubuntu 22.04
+with confinement enforced. The capture shows an existing fictional form;
+its values were prefilled and its signature area is blank. It does not prove
+editing, saving or signing. The [capture record](docs/linux-snap8-form.json)
+links the exact native run and checksum. This is not an AppImage capture or
+an AUR publication. Test installations are not acquired users.
+
 ## Publication requirements
 
 Before AUR publication, verify the current catalog search, review the complete
