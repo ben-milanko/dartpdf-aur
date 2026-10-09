@@ -10,7 +10,7 @@ permissions:
 
 env:
   APP_SOURCE: a613e93fe74856adcb1b289134e5d8cbb47fbe0c
-  ABI_CHECK_SOURCE: 67600a850e3e6e86a50dab3ce4952e8c71823cd7
+  ABI_CHECK_SOURCE: 31d4997dca2253f273e377de9a1ec4811af36481
   APPIMAGETOOL_VERSION: '1.9.1'
   APPIMAGETOOL_SHA256: ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0
 
@@ -38,8 +38,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ninja-build libgtk-3-dev libsecret-1-dev \
             libjsoncpp-dev xvfb x11-utils binutils desktop-file-utils \
-            appstream squashfs-tools
+            squashfs-tools python3-venv libcurl4-openssl-dev libxml2-dev \
+            libyaml-dev libstemmer-dev libsystemd-dev liblzma-dev libzstd-dev \
+            gperf gettext xsltproc docbook-xsl itstool
           ldd --version
+      - name: Build the schema-aware official AppStream validator
+        run: bash abi-check/tool/build_appstream_validator.sh
       - name: Set up the released Flutter compiler without caching
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
         with:
