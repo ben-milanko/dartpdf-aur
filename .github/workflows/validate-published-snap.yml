@@ -21,7 +21,7 @@ jobs:
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y snapd dbus-user-session xvfb xauth x11-utils python3-yaml \
-            at-spi2-core ibus
+            at-spi2-core ibus python3-gi gir1.2-atspi-2.0
           sudo systemctl start snapd.socket
           timeout 120 sudo snap wait system seed.loaded
           lsb_release -a
@@ -35,6 +35,9 @@ jobs:
           snap list dartpdf
           snap connections dartpdf
           test "$(snap debug confinement)" = strict
+          # Read the generated policy for this installed app. Do not modify it.
+          sudo sed -n '/# accessibility (a11y)/,/# ibus/p' \
+            /var/lib/snapd/apparmor/profiles/snap.dartpdf.dartpdf
           python3 - <<'PY'
           import json
           from pathlib import Path

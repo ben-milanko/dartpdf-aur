@@ -25,6 +25,18 @@ def main():
     print("Desktop test cgroup:", Path("/proc/self/cgroup").read_text().strip())
     checked(["systemctl", "--user", "is-active", "dbus.socket"])
     checked(["busctl", "--user", "status", "org.freedesktop.systemd1"])
+    # A desktop with accessibility enabled starts these services at login.
+    # Keep the app's normal GetAddress call and confinement unchanged; this
+    # prepares the actual host service instead of suppressing its diagnostics.
+    checked(["busctl", "--user", "call", "org.a11y.Bus", "/org/a11y/bus",
+             "org.a11y.Bus", "GetAddress"])
+    checked(["busctl", "--user", "status", "org.a11y.Bus"])
+    import gi
+    gi.require_version("Atspi", "2.0")
+    from gi.repository import Atspi
+    desktop = Atspi.get_desktop(0)
+    assert desktop is not None, "Host accessibility desktop unavailable"
+    print("Initialized accessibility desktop:", desktop.get_child_count())
     fixture = Path.home() / "snap/dartpdf/common/public sample.pdf"
     assert hashlib.sha256(fixture.read_bytes()).hexdigest() == (
         "fcee6184c0d776126782cd2799797b106373278c8ea0a4354ee4e33cd8663d51"
@@ -73,12 +85,30 @@ def main():
             print("Actual GUI AppArmor profile:", profile)
             assert profile == "snap.dartpdf.dartpdf (enforce)", profile
             print("Actual GUI cgroup:", Path(f"/proc/{gui.pid}/cgroup").read_text().strip())
+            accessible = None
+            for _ in range(10):
+                desktop.clear_cache()
+                for index in range(desktop.get_child_count()):
+                    app = desktop.get_child_at_index(index)
+                    if app is not None and app.get_process_id() == gui.pid:
+                        accessible = {"pid": app.get_process_id(), "name": app.get_name(),
+                                      "children": app.get_child_count()}
+                        break
+                if accessible is not None and accessible["children"] > 0:
+                    break
+                assert gui.poll() is None, "GUI exited while checking accessibility"
+                assert not fatal.search(log_path.read_text()), "Fatal accessibility diagnostic"
+                time.sleep(1)
+            assert accessible is not None and accessible["children"] > 0, (
+                "DartPDF did not register an accessible application with a child"
+            )
+            print("Actual accessible application:", json.dumps(accessible))
             while time.monotonic() - mapped_at < 10:
                 time.sleep(1)
                 assert gui.poll() is None, "GUI exited after mapping its window"
                 assert not fatal.search(log_path.read_text()), "Fatal launch diagnostic"
             print("PASS: signed published Snap, normal desktop user, enforced "
-                  "GUI AppArmor profile, app identity, "
+                  "GUI AppArmor profile, actual accessibility registration, app identity, "
                   "CLI inspection and mapped GUI surviving ten seconds. "
                   "This is not a visual or all-feature editing certification.")
         finally:
