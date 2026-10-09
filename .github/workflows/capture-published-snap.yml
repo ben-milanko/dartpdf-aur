@@ -1,0 +1,57 @@
+name: Capture published Snap form on Linux
+
+# Deliberately public fictional sample and genuine Linux app pixels only.
+# Standard public runner; no artifact/cache upload, app rebuild or publication.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Install native capture tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y snapd dbus-user-session xvfb xauth x11-utils \
+            python3-yaml at-spi2-core ibus python3-gi gir1.2-atspi-2.0 \
+            imagemagick xdotool
+          sudo systemctl start snapd.socket
+          timeout 120 sudo snap wait system seed.loaded
+          lsb_release -a
+          snap version
+          test "$(snap debug confinement)" = strict
+      - name: Install the unchanged signed stable package
+        run: |
+          set -euo pipefail
+          sudo snap install dartpdf --channel=latest/stable
+          snap list dartpdf
+          snap connections dartpdf
+          mkdir -p "$HOME/snap/dartpdf/common" "$HOME/.config/ibus"
+          chmod 700 "$HOME/snap/dartpdf/common"
+          install -m 644 tests/fixtures/equipment-loan-form.pdf \
+            "$HOME/snap/dartpdf/common/Equipment loan form.pdf"
+      - name: Capture the published app as a normal desktop user
+        run: |
+          set -euo pipefail
+          sudo systemd-run --unit=dartpdf-snap-form-capture \
+            --uid=runner --gid=runner --property=PAMName=login --wait --pipe \
+            --working-directory="$GITHUB_WORKSPACE" \
+            --setenv=XDG_RUNTIME_DIR="/run/user/$(id -u)" \
+            --setenv=DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$(id -u)/bus" \
+            /usr/bin/xvfb-run -a --server-args="-screen 0 1440x1100x24" \
+            --auth-file="$HOME/snap/dartpdf/common/Xauthority" \
+            /usr/bin/python3 "$GITHUB_WORKSPACE/tests/snap_form_capture.py"
+      - name: Remove only the disposable test installation
+        if: always()
+        run: |
+          if snap list dartpdf >/dev/null 2>&1; then
+            sudo snap remove dartpdf
+          fi
