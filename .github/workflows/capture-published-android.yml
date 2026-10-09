@@ -1,0 +1,30 @@
+name: Capture published Android form
+
+# Official release APK and deliberately public fictional PDF only.
+# Standard public runner; no build, cache, artifact upload, store or deployment.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Fetch only the exact official release APK
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error --max-time 180 \
+            --output "$RUNNER_TEMP/dartpdf-app-release.apk" \
+            https://github.com/ben-milanko/dart-pdf/releases/download/app-v8.0.0/app-release.apk
+          echo "21eb0bb44965aca70bcfc3252d7caad7aadf2b3a0cfef71b360759aba31f5413  $RUNNER_TEMP/dartpdf-app-release.apk" | sha256sum -c -
+          test "$(stat -c %s "$RUNNER_TEMP/dartpdf-app-release.apk")" = 125544140
+      - name: Check published APK and capture native Android pixels
+        run: |
+          set -euo pipefail
+          /usr/bin/python3 tests/android_form_capture.py
