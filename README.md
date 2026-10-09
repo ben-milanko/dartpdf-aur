@@ -6,8 +6,12 @@ DartPDF 8.0.0 Linux release. It is not yet published to the AUR. Do not use
 verified.
 
 The package keeps the upstream GUI, CLI, native libraries and desktop
-integration. It installs the bundle under `/opt/dartpdf`, with launchers at
+integration. It installs the bundle under `/usr/lib/dartpdf`, with launchers at
 `/usr/bin/dartpdf` and `/usr/bin/dartpdf-cli`.
+
+The recipe repairs the Flutter plugins' upstream CI build-directory RUNPATH
+so they resolve the bundled engine from their own directory. It does not drop
+native plugins or disable source checksum validation.
 
 ## Validation
 

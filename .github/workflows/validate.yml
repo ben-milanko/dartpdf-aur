@@ -18,12 +18,12 @@ jobs:
       - name: Install native validation dependencies
         run: |
           pacman -Syu --noconfirm --needed gtk3 libsecret namcap desktop-file-utils \
-            xorg-server-xvfb xorg-xauth xorg-xwininfo python mesa dbus
+            xorg-server-xvfb xorg-xauth xorg-xwininfo python mesa dbus patchelf
           useradd --create-home builder
           install -d -o builder -g builder /tmp/dartpdf-aur-test/recipe
           cp PKGBUILD .SRCINFO LICENSE /tmp/dartpdf-aur-test/recipe/
           install -d -o builder -g builder /tmp/dartpdf-aur-test/runtime
-          cp tests/runtime_check.py /tmp/dartpdf-aur-test/runtime/
+          cp tests/runtime_check.py tests/audit_dependencies.py /tmp/dartpdf-aur-test/runtime/
           chmod 755 /tmp/dartpdf-aur-test
           chown builder:builder /tmp/dartpdf-aur-test
       - name: Verify metadata and build with makepkg
@@ -47,12 +47,13 @@ jobs:
           readlink /usr/bin/dartpdf
           readlink /usr/bin/dartpdf-cli
           desktop-file-validate /usr/share/applications/dev.milanko.dartpdf.desktop
-          ldd /opt/dartpdf/dart_pdf_editor_app
-          ldd /opt/dartpdf/dartpdf-cli
-          for library in /opt/dartpdf/lib/*.so*; do
+          ldd /usr/lib/dartpdf/dart_pdf_editor_app
+          ldd /usr/lib/dartpdf/dartpdf-cli
+          for library in /usr/lib/dartpdf/lib/*.so*; do
             printf '\n%s\n' "$library"
             ldd "$library"
           done
+          python /tmp/dartpdf-aur-test/runtime/audit_dependencies.py
       - name: Fetch public non-personal CLI fixture
         run: |
           curl --fail --location --silent --show-error \

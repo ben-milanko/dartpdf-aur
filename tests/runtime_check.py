@@ -17,7 +17,7 @@ def checked(command):
 
 
 asset_version = json.loads(Path(
-    "/opt/dartpdf/data/flutter_assets/version.json").read_text())
+    "/usr/lib/dartpdf/data/flutter_assets/version.json").read_text())
 assert asset_version["version"] == "8.0.0", asset_version
 print("GUI bundle version:", asset_version["version"])
 cli_version = checked(["/usr/bin/dartpdf-cli", "--version"])
