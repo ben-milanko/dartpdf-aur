@@ -10,7 +10,7 @@ permissions:
 
 env:
   APP_SOURCE: a613e93fe74856adcb1b289134e5d8cbb47fbe0c
-  ABI_CHECK_SOURCE: 31d4997dca2253f273e377de9a1ec4811af36481
+  ABI_CHECK_SOURCE: 07a2170484ec0fbc0e8a9a5d16b918f2a331149b
   APPIMAGETOOL_VERSION: '1.9.1'
   APPIMAGETOOL_SHA256: ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0
 
@@ -89,7 +89,7 @@ jobs:
           python3 ../../abi-check/tool/stage_linux_appdir.py \
             --bundle build/linux/x64/release/bundle --appdir DartPDF.AppDir
           desktop-file-validate DartPDF.AppDir/dev.milanko.dartpdf.desktop
-          appstreamcli validate --no-net DartPDF.AppDir/usr/share/metainfo/dev.milanko.dartpdf.metainfo.xml
+          appstreamcli validate --no-net DartPDF.AppDir/usr/share/metainfo/dev.milanko.dartpdf.appdata.xml
           python3 - <<'PY'
           from pathlib import Path
           import hashlib
@@ -112,7 +112,7 @@ jobs:
               elif original.is_file():
                   assert hashlib.sha256(original.read_bytes()).digest() == hashlib.sha256(destination.read_bytes()).digest(), relative
                   checked += 1
-          component = ET.parse(appdir / 'usr/share/metainfo/dev.milanko.dartpdf.metainfo.xml').getroot()
+          component = ET.parse(appdir / 'usr/share/metainfo/dev.milanko.dartpdf.appdata.xml').getroot()
           assert component.findtext('id') == 'dev.milanko.dartpdf'
           assert component.findtext('launchable') == 'dev.milanko.dartpdf.desktop'
           assert component.find('releases/release').get('version') == '8.0.0'
@@ -135,9 +135,9 @@ jobs:
         run: |
           set -euo pipefail
           ./candidate.AppImage --appimage-extract > extracted-files.txt
-          test -f squashfs-root/usr/share/metainfo/dev.milanko.dartpdf.metainfo.xml
+          test -f squashfs-root/usr/share/metainfo/dev.milanko.dartpdf.appdata.xml
           test ! -d squashfs-root/usr/bin/share
-          cmp DartPDF.AppDir/usr/share/metainfo/dev.milanko.dartpdf.metainfo.xml squashfs-root/usr/share/metainfo/dev.milanko.dartpdf.metainfo.xml
+          cmp DartPDF.AppDir/usr/share/metainfo/dev.milanko.dartpdf.appdata.xml squashfs-root/usr/share/metainfo/dev.milanko.dartpdf.appdata.xml
           cmp DartPDF.AppDir/dev.milanko.dartpdf.desktop squashfs-root/dev.milanko.dartpdf.desktop
           python3 ../../abi-check/tool/check_linux_glibc.py squashfs-root/usr/bin --max-version 2.35
           echo 'PASS: extracted AppImage has discoverable metadata and all binary libc requirements remain within baseline'
