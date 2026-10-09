@@ -20,7 +20,8 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y snapd dbus-x11 xvfb xauth x11-utils python3-yaml
+          sudo apt-get install -y snapd dbus-x11 xvfb xauth x11-utils python3-yaml \
+            at-spi2-core ibus
           sudo systemctl start snapd.socket
           timeout 120 sudo snap wait system seed.loaded
           lsb_release -a
@@ -55,18 +56,22 @@ jobs:
             --output "$RUNNER_TEMP/public-sample.pdf" \
             https://raw.githubusercontent.com/ben-milanko/dart-pdf/a613e93fe74856adcb1b289134e5d8cbb47fbe0c/test_corpora/pdfjs/empty.pdf
           echo "fcee6184c0d776126782cd2799797b106373278c8ea0a4354ee4e33cd8663d51  $RUNNER_TEMP/public-sample.pdf" | sha256sum -c -
-          sudo install -d -m 700 /run/user/0 /root/snap/dartpdf/common
-          sudo install -m 644 "$RUNNER_TEMP/public-sample.pdf" "/root/snap/dartpdf/common/public sample.pdf"
+          mkdir -p "$HOME/snap/dartpdf/common" "$HOME/.config/ibus"
+          chmod 700 "$HOME/snap/dartpdf/common"
+          install -m 644 "$RUNNER_TEMP/public-sample.pdf" "$HOME/snap/dartpdf/common/public sample.pdf"
       - name: Check confined CLI and published GUI launch
         run: |
           set -euo pipefail
-          # The runner user has no PAM session cgroup. As in the application's
-          # existing release smoke test, root still uses strict snap-confine.
+          # Create a real PAM session for the normal runner user. Do not run
+          # the GUI as root or bypass snap-confine's session/cgroup checks.
           # Xvfb keeps cookie authentication; its file is in the snap's own data.
-          sudo env XDG_RUNTIME_DIR=/run/user/0 \
-            dbus-run-session -- \
-            xvfb-run -a --auth-file=/root/snap/dartpdf/common/Xauthority \
-            python3 tests/snap_runtime_check.py
+          sudo systemd-run --unit=dartpdf-snap-validation \
+            --uid=runner --gid=runner --property=PAMName=login --wait --pipe \
+            --working-directory="$GITHUB_WORKSPACE" \
+            --setenv=XDG_RUNTIME_DIR="/run/user/$(id -u)" \
+            /usr/bin/dbus-run-session -- \
+            /usr/bin/xvfb-run -a --auth-file="$HOME/snap/dartpdf/common/Xauthority" \
+            /usr/bin/python3 "$GITHUB_WORKSPACE/tests/snap_runtime_check.py"
       - name: Remove only the disposable test installation
         if: always()
         run: |
