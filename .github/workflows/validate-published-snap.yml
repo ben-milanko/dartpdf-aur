@@ -1,0 +1,75 @@
+name: Validate published Snap on Ubuntu 22.04
+
+# Read-only validation of the signed Store package, not a build or publication.
+# Standard public runner; no caches, artifact uploads, credentials or release.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snap:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Install native validation tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y snapd dbus-x11 xvfb xauth x11-utils python3-yaml
+          sudo systemctl start snapd.socket
+          timeout 120 sudo snap wait system seed.loaded
+          lsb_release -a
+          snap version
+          snap debug confinement
+      - name: Install only the signed published stable package
+        run: |
+          set -euo pipefail
+          sudo snap install dartpdf --channel=latest/stable
+          snap info dartpdf
+          snap list dartpdf
+          snap connections dartpdf
+          test "$(snap debug confinement)" = strict
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          import yaml
+          meta = yaml.safe_load(Path('/snap/dartpdf/current/meta/snap.yaml').read_text())
+          assert str(meta['version']) == '8.0.0', meta['version']
+          assert meta['base'] == 'core24', meta['base']
+          assert meta['confinement'] == 'strict', meta['confinement']
+          assert meta['name'] == 'dartpdf', meta['name']
+          assert 'cli' in meta['apps'], meta['apps'].keys()
+          print(json.dumps({'name': meta['name'], 'version': meta['version'],
+                            'base': meta['base'], 'confinement': meta['confinement'],
+                            'installed_revision': Path('/snap/dartpdf/current').resolve().name}))
+          PY
+      - name: Fetch one public non-personal test document
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error --max-time 60 \
+            --output "$RUNNER_TEMP/public-sample.pdf" \
+            https://raw.githubusercontent.com/ben-milanko/dart-pdf/a613e93fe74856adcb1b289134e5d8cbb47fbe0c/test_corpora/pdfjs/empty.pdf
+          echo "fcee6184c0d776126782cd2799797b106373278c8ea0a4354ee4e33cd8663d51  $RUNNER_TEMP/public-sample.pdf" | sha256sum -c -
+          sudo install -d -m 700 /run/user/0 /root/snap/dartpdf/common
+          sudo install -m 644 "$RUNNER_TEMP/public-sample.pdf" "/root/snap/dartpdf/common/public sample.pdf"
+      - name: Check confined CLI and published GUI launch
+        run: |
+          set -euo pipefail
+          # The runner user has no PAM session cgroup. As in the application's
+          # existing release smoke test, root still uses strict snap-confine.
+          # Xvfb keeps cookie authentication; its file is in the snap's own data.
+          sudo env XDG_RUNTIME_DIR=/run/user/0 \
+            dbus-run-session -- \
+            xvfb-run -a --auth-file=/root/snap/dartpdf/common/Xauthority \
+            python3 tests/snap_runtime_check.py
+      - name: Remove only the disposable test installation
+        if: always()
+        run: |
+          if snap list dartpdf >/dev/null 2>&1; then
+            sudo snap remove dartpdf
+          fi
