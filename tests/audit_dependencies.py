@@ -2,9 +2,14 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import sys
 
 
 bundle = Path("/usr/lib/dartpdf")
+metadata = Path(sys.argv[1]).read_text()
+declared = set(re.findall(r"^\s*depends = (\S+)\s*$", metadata, re.MULTILINE))
+if not declared:
+    raise SystemExit("No runtime dependencies found in validated .SRCINFO")
 providers = set()
 missing = {}
 objects = [bundle / "dart_pdf_editor_app", bundle / "dartpdf-cli", *sorted((bundle / "lib").glob("*.so*"))]
@@ -29,6 +34,17 @@ for obj in objects:
         owner = subprocess.run(["pacman", "-Qoq", str(actual)], text=True,
                                capture_output=True, check=True).stdout.strip()
         providers.update(owner.splitlines())
+undeclared = providers - declared
+unexpected_missing = {
+    obj: libraries for obj, libraries in missing.items()
+    if obj != "libdartjni.so" or libraries != ["libjvm.so"]
+}
 print("DIRECT_DEPENDENCY_AUDIT=" + json.dumps({
     "providers": sorted(providers), "unresolvedDirectLibraries": missing,
+    "declaredRuntimeDependencies": sorted(declared),
+    "undeclaredProviders": sorted(undeclared),
+    "unexpectedUnresolvedLibraries": unexpected_missing,
 }, sort_keys=True))
+if undeclared or unexpected_missing:
+    raise SystemExit("Direct dependency declaration/resolution check failed")
+print("PASS: direct ELF dependencies explicitly declared; optional JNI JVM excluded")

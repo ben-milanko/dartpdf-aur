@@ -6,9 +6,11 @@ pkgdesc='Local PDF editor with annotations, forms, signatures and redaction'
 arch=('x86_64')
 url="https://dart-pdf.com"
 license=('Apache-2.0')
-# Candidate dependency list; validate direct ELF dependencies on Arch before
-# publishing. Keep the complete upstream bundle, including its native plugins.
-depends=('gtk3' 'libsecret')
+# Direct ELF providers verified on Arch, plus the installed icon hierarchy.
+# Keep the complete upstream bundle, including its native plugins.
+depends=('at-spi2-core' 'cairo' 'fontconfig' 'gdk-pixbuf2' 'glib2' 'glibc'
+         'gtk3' 'harfbuzz' 'hicolor-icon-theme' 'libepoxy' 'libgcc'
+         'libsecret' 'libstdc++' 'pango' 'zlib')
 makedepends=('patchelf')
 # The bundled JNI helper links libjvm.so. Validate its runtime requirement
 # separately rather than attributing it to OCR without evidence.

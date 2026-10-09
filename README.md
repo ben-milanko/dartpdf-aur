@@ -18,8 +18,11 @@ native plugins or disable source checksum validation.
 The manual workflow uses the official Arch base-devel container on a standard
 public Ubuntu runner. It checks source integrity, generated `.SRCINFO`, native
 `makepkg` output, package lint, installed files, the CLI and a headless GUI
-window, then removes the test package. Dependency diagnostics are retained in
-the job log. It does not upload artifacts, create caches, deploy to a website
+window, then removes the test package. Direct ELF providers must be explicitly
+declared and resolved, except the optional JNI helper's `libjvm.so`. Native
+lint errors fail the workflow; warnings remain visible for review. These
+checks do not validate the JNI feature or every editing workflow. Dependency
+diagnostics are retained in the job log. It does not upload artifacts, create caches, deploy to a website
 or publish to the AUR.
 
 This is AI-assisted preparation. Successful build or launch checks are not a

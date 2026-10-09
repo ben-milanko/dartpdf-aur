@@ -53,7 +53,7 @@ jobs:
             printf '\n%s\n' "$library"
             ldd "$library"
           done
-          python /tmp/dartpdf-aur-test/runtime/audit_dependencies.py
+          python /tmp/dartpdf-aur-test/runtime/audit_dependencies.py /tmp/dartpdf-aur-test/recipe/.SRCINFO
       - name: Fetch public non-personal CLI fixture
         run: |
           curl --fail --location --silent --show-error \
@@ -72,7 +72,7 @@ jobs:
             test ! -e /usr/bin/dartpdf
             test ! -e /usr/bin/dartpdf-cli
           fi
-      - name: Require clean native lint
+      - name: Require no native lint errors
         run: |
           if grep -E '(^| )E:' /tmp/dartpdf-aur-test/recipe-lint.log /tmp/dartpdf-aur-test/package-lint.log; then
             exit 1
