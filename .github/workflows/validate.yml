@@ -1,0 +1,78 @@
+name: Validate Arch package candidate
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    container: archlinux:base-devel-20261004.0.606936
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Install native validation dependencies
+        run: |
+          pacman -Syu --noconfirm --needed gtk3 libsecret namcap desktop-file-utils \
+            xorg-server-xvfb xorg-xauth xorg-xwininfo python mesa dbus
+          useradd --create-home builder
+          install -d -o builder -g builder /tmp/dartpdf-aur-test/recipe
+          cp PKGBUILD .SRCINFO LICENSE /tmp/dartpdf-aur-test/recipe/
+          install -d -o builder -g builder /tmp/dartpdf-aur-test/runtime
+          cp tests/runtime_check.py /tmp/dartpdf-aur-test/runtime/
+          chmod 755 /tmp/dartpdf-aur-test
+          chown builder:builder /tmp/dartpdf-aur-test
+      - name: Verify metadata and build with makepkg
+        working-directory: /tmp/dartpdf-aur-test/recipe
+        run: |
+          runuser -u builder -- makepkg --printsrcinfo > /tmp/dartpdf-aur-test/generated.SRCINFO
+          diff -u .SRCINFO /tmp/dartpdf-aur-test/generated.SRCINFO
+          runuser -u builder -- makepkg --noconfirm
+          pacman -Qip /tmp/dartpdf-aur-test/recipe/dartpdf-bin-8.0.0-1-x86_64.pkg.tar.zst
+      - name: Record native lint and direct dependencies
+        working-directory: /tmp/dartpdf-aur-test/recipe
+        run: |
+          namcap PKGBUILD | tee /tmp/dartpdf-aur-test/recipe-lint.log
+          namcap dartpdf-bin-8.0.0-1-x86_64.pkg.tar.zst | tee /tmp/dartpdf-aur-test/package-lint.log
+          readelf -d src/dart_pdf_editor_app src/dartpdf-cli src/lib/*.so* | grep NEEDED
+      - name: Install only the candidate package
+        run: |
+          pacman -U --noconfirm /tmp/dartpdf-aur-test/recipe/dartpdf-bin-8.0.0-1-x86_64.pkg.tar.zst
+          pacman -Q dartpdf-bin
+          pacman -Qkk dartpdf-bin
+          readlink /usr/bin/dartpdf
+          readlink /usr/bin/dartpdf-cli
+          desktop-file-validate /usr/share/applications/dev.milanko.dartpdf.desktop
+          ldd /opt/dartpdf/dart_pdf_editor_app
+          ldd /opt/dartpdf/dartpdf-cli
+          for library in /opt/dartpdf/lib/*.so*; do
+            printf '\n%s\n' "$library"
+            ldd "$library"
+          done
+      - name: Fetch public non-personal CLI fixture
+        run: |
+          curl --fail --location --silent --show-error \
+            --output /tmp/dartpdf-aur-test/empty.pdf \
+            https://raw.githubusercontent.com/ben-milanko/dart-pdf/a613e93fe74856adcb1b289134e5d8cbb47fbe0c/test_corpora/pdfjs/empty.pdf
+          chmod 644 /tmp/dartpdf-aur-test/empty.pdf
+      - name: Check installed CLI and GUI window
+        run: |
+          dbus-run-session -- xvfb-run -a runuser -u builder -- python /tmp/dartpdf-aur-test/runtime/runtime_check.py
+      - name: Remove only the disposable test package
+        if: always()
+        run: |
+          if pacman -Q dartpdf-bin; then
+            pacman -R --noconfirm dartpdf-bin
+            ! pacman -Q dartpdf-bin
+            test ! -e /usr/bin/dartpdf
+            test ! -e /usr/bin/dartpdf-cli
+          fi
+      - name: Require clean native lint
+        run: |
+          if grep -E '(^| )E:' /tmp/dartpdf-aur-test/recipe-lint.log /tmp/dartpdf-aur-test/package-lint.log; then
+            exit 1
+          fi
